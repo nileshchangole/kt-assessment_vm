@@ -28,7 +28,8 @@ export default async function handler(req, res) {
       .eq(
         'employee_id',
         employee_id.toString().trim()
-      );
+      )
+      .limit(1);
 
     if (error) {
       throw error;
@@ -52,14 +53,24 @@ export default async function handler(req, res) {
 
     return res.json({
       success: true,
+
+      // Database Primary Key
+      id: user.id,
+
+      // Login ID
       employee_id: user.employee_id,
+
+      // User Details
       name: user.name,
       role: user.role
     });
 
   } catch (err) {
 
-    console.error(err);
+    console.error(
+      'LOGIN ERROR:',
+      err
+    );
 
     return res.status(500).json({
       success: false,
