@@ -165,179 +165,364 @@ button {
 
 <script>
 
-let questions=[], index=0, answers={}, review={}, submitted=false, time=0;
+<script>
 
-// ================= LOAD =================
-fetch('/api?action=get_assessment')
-.then(r=>r.json())
-.then(d=>{
-document.getElementById("title").innerText="Assessment: "+d.topic;
-questions = d.questions;
-time = d.duration * 60;
+let questions = [];
+let index = 0;
+let answers = {};
+let review = {};
+let submitted = false;
+let time = 0;
 
-enableFullScreen();
-startTimer();
-createGrid();
-loadQ();
-});
+const employee_id =
+  localStorage.getItem("employee_id");
 
-// ================= FULLSCREEN =================
-function enableFullScreen(){
-let elem = document.documentElement;
+// ================= LOAD ASSESSMENT =================
 
-if (elem.requestFullscreen) elem.requestFullscreen();
-else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+async function loadAssessment() {
+
+  if (!employee_id) {
+    alert("Session expired. Please login again.");
+    window.location.href = "/login.html";
+    return;
+  }
+
+  try {
+
+    const response =
+      await fetch(
+        `/api?action=get_assessment&employee_id=${employee_id}`
+      );
+
+    const data =
+      await response.json();
+
+    console.log("ASSESSMENT:", data);
+
+    if (!data.success) {
+
+      alert(
+        data.message ||
+        "No assessment assigned"
+      );
+
+      window.location.href =
+        "/login.html";
+
+      return;
+    }
+
+    document.getElementById("title")
+      .innerText =
+      "Assessment: " + data.topic;
+
+    questions =
+      data.questions || [];
+
+    time =
+      (data.duration || 0) * 60;
+
+    createGrid();
+    loadQ();
+    startTimer();
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert(
+      "Failed to load assessment"
+    );
+  }
 }
-
-// Detect exit fullscreen
-document.addEventListener("fullscreenchange", ()=>{
-if(!document.fullscreenElement && !submitted){
-alert("Exiting fullscreen is not allowed!");
-submitQuiz();
-}
-});
 
 // ================= TIMER =================
-function startTimer(){
-setInterval(()=>{
-if(submitted) return;
-time--;
 
-let m=Math.floor(time/60);
-let s=time%60;
-timer.innerText = `${m}:${s<10?'0':''}${s}`;
+function startTimer() {
 
-if(time<=0){
-alert("Time up!");
-submitQuiz();
-}
-},1000);
+  const timer =
+    document.getElementById("timer");
+
+  setInterval(() => {
+
+    if (submitted) return;
+
+    time--;
+
+    let m =
+      Math.floor(time / 60);
+
+    let s =
+      time % 60;
+
+    timer.innerText =
+      `${m}:${s < 10 ? '0' : ''}${s}`;
+
+    if (time <= 0) {
+
+      alert("Time up!");
+
+      submitQuiz();
+    }
+
+  }, 1000);
 }
 
 // ================= LOAD QUESTION =================
-function loadQ(){
-let q=questions[index];
 
-quiz.innerHTML=`
-<h3>${index+1}. ${q.question}</h3>
-${['A','B','C','D'].map(o=>`
-<label class="option">
-<input type="radio" name="ans" value="${o}"
-${answers[index]==o?'checked':''}>
-${q['option_'+o.toLowerCase()]}
-</label>`).join('')}
-`;
+function loadQ() {
 
-updateGrid();
+  if (
+    !questions ||
+    questions.length === 0
+  ) {
+    return;
+  }
+
+  let q =
+    questions[index];
+
+  document.getElementById("quiz")
+    .innerHTML = `
+      <h3>
+        ${index + 1}.
+        ${q.question}
+      </h3>
+
+      ${['A','B','C','D']
+      .map(o => `
+      <label class="option">
+
+      <input
+        type="radio"
+        name="ans"
+        value="${o}"
+        ${answers[index] === o ? 'checked' : ''}>
+
+      ${q[
+        'option_' +
+        o.toLowerCase()
+      ]}
+
+      </label>
+      `).join('')}
+    `;
+
+  updateGrid();
 }
 
 // ================= SAVE =================
-function save(){
-let sel=document.querySelector('input[name="ans"]:checked');
-if(sel) answers[index]=sel.value;
+
+function save() {
+
+  let selected =
+    document.querySelector(
+      'input[name="ans"]:checked'
+    );
+
+  if (selected) {
+
+    answers[index] =
+      selected.value;
+  }
 }
 
-// ================= NAV =================
-function next(){
-save();
-if(index<questions.length-1){ index++; loadQ(); }
+// ================= NEXT =================
+
+function next() {
+
+  save();
+
+  if (
+    index <
+    questions.length - 1
+  ) {
+
+    index++;
+
+    loadQ();
+  }
 }
 
-function go(i){
-save();
-index=i;
-loadQ();
+// ================= GO =================
+
+function go(i) {
+
+  save();
+
+  index = i;
+
+  loadQ();
 }
 
 // ================= REVIEW =================
-function markReview(){
-review[index]=true;
-updateGrid();
+
+function markReview() {
+
+  review[index] = true;
+
+  updateGrid();
 }
 
 // ================= GRID =================
-function createGrid(){
-grid.innerHTML = questions.map((_,i)=>
-`<div class="qbox" onclick="go(${i})" id="q${i}">${i+1}</div>`
-).join('');
+
+function createGrid() {
+
+  document.getElementById("grid")
+    .innerHTML = questions.map(
+      (_, i) => `
+      <div
+        class="qbox"
+        id="q${i}"
+        onclick="go(${i})">
+
+        ${i + 1}
+
+      </div>
+    `
+    ).join('');
 }
 
-function updateGrid(){
-questions.forEach((_,i)=>{
-let box=document.getElementById("q"+i);
-box.className="qbox";
+function updateGrid() {
 
-if(i==index) box.classList.add("active");
-if(answers[i]) box.classList.add("answered");
-if(review[i]) box.classList.add("review");
-});
+  questions.forEach((_, i) => {
+
+    const box =
+      document.getElementById(
+        "q" + i
+      );
+
+    if (!box) return;
+
+    box.className =
+      "qbox";
+
+    if (i === index)
+      box.classList.add(
+        "active"
+      );
+
+    if (answers[i])
+      box.classList.add(
+        "answered"
+      );
+
+    if (review[i])
+      box.classList.add(
+        "review"
+      );
+
+  });
 }
 
 // ================= SUBMIT =================
-function submitQuiz(){
-if(submitted) return;
-submitted=true;
-save();
 
-fetch('/api?action=submit',{
-method:'POST',
-headers:{'Content-Type':'application/json'},
-body: JSON.stringify({
-answers,
-questions,
-time_taken: time
-})
-})
-.then(r=>r.json())
-.then(d=>{
-alert("Score: "+d.score+"%");
-window.location='/login.html';
-});
+async function submitQuiz() {
+
+  if (submitted)
+    return;
+
+  submitted = true;
+
+  save();
+
+  try {
+
+    const response =
+      await fetch(
+        "/api?action=submit",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+
+              employee_id,
+
+              answers,
+
+              questions,
+
+              time_taken: time
+
+            })
+        }
+      );
+
+    const result =
+      await response.json();
+
+    alert(
+      "Score: " +
+      result.score +
+      "%"
+    );
+
+    localStorage.clear();
+
+    window.location.href =
+      "/login.html";
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert(
+      "Failed to submit"
+    );
+  }
 }
 
-// ================= ANTI-CHEAT =================
+// ================= ANTI CHEAT =================
 
-// TAB SWITCH / MINIMIZE
-document.addEventListener("visibilitychange", ()=>{
-if(document.hidden && !submitted){
-alert("Tab switch detected!");
-submitQuiz();
-}
-});
+document.addEventListener(
+  "visibilitychange",
+  () => {
 
-// WINDOW BLUR
-window.addEventListener("blur", ()=>{
-if(!submitted){
-alert("Window focus lost!");
-submitQuiz();
-}
-});
+    if (
+      document.hidden &&
+      !submitted
+    ) {
 
-// RIGHT CLICK DISABLE
-document.addEventListener("contextmenu", e => e.preventDefault());
+      alert(
+        "Tab switch detected"
+      );
 
-// COPY / PASTE DISABLE
-document.addEventListener("copy", e => e.preventDefault());
-document.addEventListener("paste", e => e.preventDefault());
-document.addEventListener("cut", e => e.preventDefault());
+      submitQuiz();
+    }
+  }
+);
 
-// TEXT SELECTION DISABLE
-document.addEventListener("selectstart", e => e.preventDefault());
+window.addEventListener(
+  "blur",
+  () => {
 
-// BLOCK DEV TOOLS KEYS
-document.addEventListener("keydown", function(e){
-if(
-e.key === "F12" ||
-(e.ctrlKey && e.shiftKey && e.key === "I") ||
-(e.ctrlKey && e.key === "U") ||
-(e.ctrlKey && e.key === "C")
-){
-e.preventDefault();
-alert("Restricted action!");
-}
-});
+    if (!submitted) {
 
+      alert(
+        "Window focus lost"
+      );
+
+      submitQuiz();
+    }
+  }
+);
+
+document.addEventListener(
+  "contextmenu",
+  e => e.preventDefault()
+);
+
+// ================= START =================
+
+loadAssessment();
+
+</script>
 </script>
 
 </body>
