@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html>
 <head>
   <title>Manage Questions</title>
@@ -11,42 +12,44 @@
 
 <div class="sidebar">
   <h2>Admin</h2>
-  <a href="dashboard.html">Dashboard</a>
-  <a href="manage_questions.html">Questions</a>
-  <a href="assign.html">Assign</a>
-  <a href="results.html">Results</a>
-  <a href="#" onclick="logout()">Logout</a>
+
+<a href="dashboard.html">Dashboard</a> <a href="manage_questions.html" class="active">Questions</a> <a href="assign.html">Assign</a> <a href="results.html">Results</a> <a href="#" onclick="logout()">Logout</a>
+
 </div>
 
 <div class="main">
 
 <h1>Manage Questions</h1>
 
-<select id="topic"></select>
-<button onclick="loadQuestions()">Load</button>
+<label>Select Topic</label> <select id="topic"></select>
+
+<button onclick="loadQuestions()">
+  Load Questions
+</button>
 
 <hr>
 
 <h3>Add New Question</h3>
 
-<input id="q" placeholder="Question"><br>
-<input id="a" placeholder="Option A"><br>
-<input id="b" placeholder="Option B"><br>
-<input id="c" placeholder="Option C"><br>
-<input id="d" placeholder="Option D"><br>
-<input id="correct" placeholder="Correct (A/B/C/D)"><br>
-<button onclick="addQuestion()">Add</button>
+<input id="q" placeholder="Question"><br> <input id="a" placeholder="Option A"><br> <input id="b" placeholder="Option B"><br> <input id="c" placeholder="Option C"><br> <input id="d" placeholder="Option D"><br> <input id="correct" placeholder="Correct Option (A/B/C/D)"><br>
+
+<button onclick="addQuestion()">
+  Add Question
+</button>
 
 <hr>
 
 <table>
+
 <thead>
 <tr>
-<th>Question</th>
-<th>Actions</th>
+  <th>Question</th>
+  <th>Action</th>
 </tr>
 </thead>
+
 <tbody id="table"></tbody>
+
 </table>
 
 </div>
@@ -56,106 +59,360 @@
 
 let currentTopicId = null;
 
+
+// =======================
 // LOAD TOPICS
-fetch('/api?action=topics')
-.then(r=>r.json())
-.then(data=>{
-  topic.innerHTML = data.map(t=>`
-    <option value="${t.id}" data-name="${t.topic_name}">
-      ${t.topic_name}
-    </option>
-  `).join('');
-});
+// =======================
 
+async function loadTopics() {
 
-// LOAD QUESTIONS
-function loadQuestions() {
-  const selected = topic.options[topic.selectedIndex];
-  const topicName = selected.getAttribute("data-name");
-  currentTopicId = topic.value;
+  try {
 
-  fetch(`/api?action=get_assessment&topic=${topicName}`)
-  .then(r=>r.json())
-  .then(data=>{
+    const response =
+      await fetch('/api?action=topics');
 
-    const table = document.getElementById('table');
-    table.innerHTML = '';
+    const data =
+      await response.json();
 
-    (data.questions || []).forEach(q=>{
-      table.innerHTML += `
-      <tr>
-        <td>
-          <input value="${q.question}" id="q${q.id}">
-        </td>
-        <td>
-          <button onclick="update(${q.id})">Save</button>
-          <button onclick="del(${q.id})">Delete</button>
-        </td>
-      </tr>
+    topic.innerHTML = '';
+
+    data.forEach(t => {
+
+      topic.innerHTML += `
+        <option value="${t.id}">
+          ${t.topic_name}
+        </option>
       `;
+
     });
 
-  });
+  } catch (err) {
+
+    console.error(err);
+
+    alert('Failed to load topics');
+
+  }
 }
 
 
+// =======================
+// LOAD QUESTIONS
+// =======================
+
+async function loadQuestions() {
+
+  currentTopicId =
+    Number(topic.value);
+
+  if (!currentTopicId) {
+
+    alert('Select topic');
+
+    return;
+  }
+
+  try {
+
+    const response =
+      await fetch(
+        '/api?action=get_questions',
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type':
+            'application/json'
+          },
+
+          body: JSON.stringify({
+            topic_id:
+              currentTopicId
+          })
+        }
+      );
+
+    const data =
+      await response.json();
+
+    const table =
+      document.getElementById('table');
+
+    table.innerHTML = '';
+
+    data.forEach(question => {
+
+      table.innerHTML += `
+        <tr>
+
+          <td>
+            <input
+              value="${question.question}"
+              id="q${question.id}">
+          </td>
+
+          <td>
+
+            <button
+              onclick="updateQuestion(${question.id})">
+              Save
+            </button>
+
+            <button
+              onclick="deleteQuestion(${question.id})">
+              Delete
+            </button>
+
+          </td>
+
+        </tr>
+      `;
+
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert(
+      'Failed to load questions'
+    );
+
+  }
+}
+
+
+// =======================
 // ADD QUESTION
-function addQuestion() {
+// =======================
 
-  fetch('/api?action=add_question',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      topic_id: currentTopicId,
-      question: q.value,
-      option_a: a.value,
-      option_b: b.value,
-      option_c: c.value,
-      option_d: d.value,
-      correct_option: correct.value
-    })
-  })
-  .then(()=> {
-    alert("Added");
+async function addQuestion() {
+
+  currentTopicId =
+    Number(topic.value);
+
+  if (!currentTopicId) {
+
+    alert('Select topic');
+
+    return;
+  }
+
+  try {
+
+    const response =
+      await fetch(
+        '/api?action=add_question',
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type':
+            'application/json'
+          },
+
+          body: JSON.stringify({
+
+            topic_id:
+              currentTopicId,
+
+            question:
+              q.value,
+
+            option_a:
+              a.value,
+
+            option_b:
+              b.value,
+
+            option_c:
+              c.value,
+
+            option_d:
+              d.value,
+
+            correct_option:
+              correct.value
+                .trim()
+                .toUpperCase()
+
+          })
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (
+      result.success === false
+    ) {
+      alert(
+        result.message ||
+        'Failed'
+      );
+      return;
+    }
+
+    alert('Question added');
+
+    q.value = '';
+    a.value = '';
+    b.value = '';
+    c.value = '';
+    d.value = '';
+    correct.value = '';
+
     loadQuestions();
-  });
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert(
+      'Failed to add question'
+    );
+
+  }
 }
 
 
-// UPDATE
-function update(id) {
-  const question = document.getElementById(`q${id}`).value;
+// =======================
+// UPDATE QUESTION
+// =======================
 
-  fetch('/api?action=update_question',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      id,
-      question
-    })
-  })
-  .then(()=> {
-    alert("Updated");
+async function updateQuestion(id) {
+
+  const question =
+    document.getElementById(
+      `q${id}`
+    ).value;
+
+  try {
+
+    const response =
+      await fetch(
+        '/api?action=update_question',
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type':
+            'application/json'
+          },
+
+          body: JSON.stringify({
+            id,
+            question
+          })
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (
+      result.success === false
+    ) {
+      alert(
+        result.message ||
+        'Failed'
+      );
+      return;
+    }
+
+    alert('Question updated');
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert(
+      'Update failed'
+    );
+
+  }
+}
+
+
+// =======================
+// DELETE QUESTION
+// =======================
+
+async function deleteQuestion(id) {
+
+  if (
+    !confirm(
+      'Delete question?'
+    )
+  ) return;
+
+  try {
+
+    const response =
+      await fetch(
+        '/api?action=delete_question',
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type':
+            'application/json'
+          },
+
+          body: JSON.stringify({
+            id
+          })
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (
+      result.success === false
+    ) {
+      alert(
+        result.message ||
+        'Failed'
+      );
+      return;
+    }
+
     loadQuestions();
-  });
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert(
+      'Delete failed'
+    );
+
+  }
 }
 
 
-// DELETE
-function del(id) {
-  if(!confirm("Delete?")) return;
+// =======================
+// LOGOUT
+// =======================
 
-  fetch('/api?action=delete_question',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ id })
-  })
-  .then(()=> loadQuestions());
-}
-function logout(){
+function logout() {
+
   localStorage.clear();
-  window.location.href = "../login.html";
+
+  window.location.href =
+    '../login.html';
+
 }
+
+
+// =======================
+// INIT
+// =======================
+
+window.onload =
+  loadTopics;
+
 </script>
 
 </body>
