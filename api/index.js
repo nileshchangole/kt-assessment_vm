@@ -5,6 +5,60 @@ export default async function handler(req, res) {
   const action = req.query.action;
 
   try {
+    if (action === "get_assessment") {
+
+  const employee_id =
+    req.query.employee_id;
+
+  const { data: assessments, error } =
+    await supabase
+      .from("assessments")
+      .select("*")
+      .eq("employee_id", employee_id)
+      .eq("is_open", true)
+      .limit(1);
+
+  if (error) throw error;
+
+  if (!assessments || assessments.length === 0) {
+
+    return res.status(404).json({
+      success: false,
+      message: "No assessment assigned"
+    });
+  }
+
+  const assessment =
+    assessments[0];
+
+  const { data: topic } =
+    await supabase
+      .from("topics")
+      .select("*")
+      .eq("id", assessment.topic_id)
+      .single();
+
+  const { data: questions } =
+    await supabase
+      .from("questions")
+      .select("*")
+      .eq("topic_id", assessment.topic_id);
+
+  return res.status(200).json({
+
+    success: true,
+
+    topic:
+      topic?.topic_name || "",
+
+    duration:
+      assessment.duration,
+
+    questions:
+      questions || []
+
+  });
+}
 
     // USERS
     if (action === "get_users") {
@@ -240,4 +294,61 @@ export default async function handler(req, res) {
       error: err.message
     });
   }
+  if (action === "submit") {
+
+  const {
+    employee_id,
+    answers,
+    questions,
+    time_taken
+  } = req.body;
+
+  let correct = 0;
+
+  questions.forEach((q, index) => {
+
+    if (
+      answers[index] &&
+      answers[index] === q.correct_option
+    ) {
+      correct++;
+    }
+
+  });
+
+  const score =
+    Math.round(
+      (correct / questions.length) * 100
+    );
+
+  const topic_id =
+    questions[0]?.topic_id;
+
+  const { error } =
+    await supabase
+      .from("attempts")
+      .insert([{
+        employee_id,
+        topic_id,
+        score,
+        time_taken,
+        attempt_date:
+          new Date().toISOString()
+      }]);
+
+  if (error) throw error;
+
+  await supabase
+    .from("assessments")
+    .update({
+      is_open: false
+    })
+    .eq("employee_id", employee_id)
+    .eq("topic_id", topic_id);
+
+  return res.status(200).json({
+    success: true,
+    score
+  });
+}
 }
