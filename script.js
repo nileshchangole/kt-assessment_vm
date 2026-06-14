@@ -50,6 +50,15 @@ function login() {
       return;
     }
 
+    // =====================================
+    // USER SESSION
+    // =====================================
+
+    localStorage.setItem(
+      "user_id",
+      data.id
+    );
+
     localStorage.setItem(
       "employee_id",
       data.employee_id
@@ -64,6 +73,10 @@ function login() {
       "role",
       data.role
     );
+
+    // =====================================
+    // REDIRECT
+    // =====================================
 
     if (data.role === "ADMIN") {
 
