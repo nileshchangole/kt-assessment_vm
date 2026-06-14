@@ -1,41 +1,119 @@
 import { supabase } from './_lib/supabase.js';
 
 export default async function handler(req, res) {
-  const { action, payload } = req.body;
 
-  try {
-    if (action === "assign") {
-      const { employee_id, topic_id, duration, is_open } = payload;
+try {
 
-      const { error } = await supabase.from('assessments').insert([
-        { employee_id, topic_id, duration, is_open }
-      ]);
+```
+const { action, payload = {} } = req.body || {};
 
-      return res.json({ success: !error });
-    }
+// ==========================
+// ASSIGN ASSESSMENT
+// ==========================
 
-    if (action === "getAssignments") {
-      const { data } = await supabase
-        .from('assessments')
-        .select('*');
+if (action === "assign") {
 
-      return res.json({ success: true, data });
-    }
+  const {
+    employee_id,
+    topic_id,
+    duration,
+    is_open = true
+  } = payload;
 
-    if (action === "toggle") {
-      const { id, is_open } = payload;
-
-      const { error } = await supabase
-        .from('assessments')
-        .update({ is_open })
-        .eq('id', id);
-
-      return res.json({ success: !error });
-    }
-
-    return res.json({ success: false });
-
-  } catch (err) {
-    return res.status(500).json({ success: false });
+  if (!employee_id || !topic_id) {
+    return res.status(400).json({
+      success: false,
+      message: "employee_id and topic_id are required"
+    });
   }
+
+  const { error } = await supabase
+    .from("assessments")
+    .insert([
+      {
+        employee_id,
+        topic_id,
+        duration,
+        is_open
+      }
+    ]);
+
+  if (error) throw error;
+
+  return res.status(200).json({
+    success: true,
+    message: "Assessment assigned successfully"
+  });
+}
+
+// ==========================
+// GET ASSIGNMENTS
+// ==========================
+
+if (action === "getAssignments") {
+
+  const { data, error } = await supabase
+    .from("assessments")
+    .select("*")
+    .order("id", { ascending: false });
+
+  if (error) throw error;
+
+  return res.status(200).json({
+    success: true,
+    data: data || []
+  });
+}
+
+// ==========================
+// TOGGLE OPEN/CLOSE
+// ==========================
+
+if (action === "toggle") {
+
+  const {
+    id,
+    is_open
+  } = payload;
+
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      message: "Assessment id required"
+    });
+  }
+
+  const { error } = await supabase
+    .from("assessments")
+    .update({
+      is_open
+    })
+    .eq("id", id);
+
+  if (error) throw error;
+
+  return res.status(200).json({
+    success: true,
+    message: "Assessment updated"
+  });
+}
+
+return res.status(400).json({
+  success: false,
+  message: "Invalid action"
+});
+```
+
+} catch (err) {
+
+```
+console.error("assessment.js error:", err);
+
+return res.status(500).json({
+  success: false,
+  message: err.message
+});
+```
+
+}
 }
