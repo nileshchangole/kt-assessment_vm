@@ -1,26 +1,51 @@
 import { supabase } from './_lib/supabase.js';
 
 export default async function handler(req, res) {
-  const { action } = req.query;
-
   try {
+    const action = req.query.action;
 
-    // ================= USERS =================
+    // =========================
+    // USERS
+    // =========================
+
     if (action === "get_users") {
-      const { data, error } = await supabase.from("employees").select("*");
+      const { data, error } = await supabase
+        .from("employees")
+        .select("*")
+        .order("employee_id");
+
       if (error) throw error;
+
       return res.status(200).json(data || []);
     }
 
     if (action === "add_user") {
       const { employee_id, name, password, role } = req.body;
 
+      if (!employee_id || !name || !password || !role) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields"
+        });
+      }
+
       const { error } = await supabase
         .from("employees")
-        .insert([{ employee_id, name, password, role }]);
+        .insert([
+          {
+            employee_id,
+            name,
+            password,
+            role
+          }
+        ]);
 
       if (error) throw error;
-      return res.status(200).json({ message: "User added" });
+
+      return res.status(200).json({
+        success: true,
+        message: "User added successfully"
+      });
     }
 
     if (action === "delete_user") {
@@ -32,63 +57,169 @@ export default async function handler(req, res) {
         .eq("employee_id", employee_id);
 
       if (error) throw error;
-      return res.status(200).json({ message: "User deleted" });
+
+      return res.status(200).json({
+        success: true,
+        message: "User deleted successfully"
+      });
     }
 
-    // ================= ADMINS =================
+    // =========================
+    // ADMINS
+    // =========================
+
     if (action === "get_admins") {
       const { data, error } = await supabase
         .from("employees")
-        .select("employee_id, name")
+        .select("id,employee_id,name")
         .in("role", ["ADMIN", "SUPERADMIN"]);
 
       if (error) throw error;
+
       return res.status(200).json(data || []);
     }
 
-    // ================= TOPICS =================
+    // =========================
+    // TOPICS
+    // =========================
+
     if (action === "topics") {
       const { data, error } = await supabase
         .from("topics")
         .select("*")
-        .order("id");
+        .order("topic_name");
 
       if (error) throw error;
+
       return res.status(200).json(data || []);
     }
 
-    // ================= QUESTIONS =================
+    if (action === "add_topic") {
+      const { topic_name } = req.body;
+
+      const { error } = await supabase
+        .from("topics")
+        .insert([{ topic_name }]);
+
+      if (error) throw error;
+
+      return res.status(200).json({
+        success: true,
+        message: "Topic added successfully"
+      });
+    }
+
+    // =========================
+    // ADMIN TOPIC PERMISSIONS
+    // =========================
+
+    if (action === "assign_topic") {
+      const { admin_id, topic_id } = req.body;
+
+      const { error } = await supabase
+        .from("admin_topics")
+        .insert([
+          {
+            admin_id,
+            topic_id
+          }
+        ]);
+
+      if (error) throw error;
+
+      return res.status(200).json({
+        success: true,
+        message: "Permission assigned"
+      });
+    }
+
+    // =========================
+    // QUESTIONS
+    // =========================
+
     if (action === "get_questions") {
       const { topic_id } = req.body;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("questions")
         .select("*")
-        .eq("topic_id", topic_id);
+        .order("id");
+
+      if (topic_id) {
+        query = query.eq("topic_id", topic_id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
+
       return res.status(200).json(data || []);
     }
 
     if (action === "add_question") {
-      const q = req.body;
-
-      const { error } = await supabase.from("questions").insert([q]);
-
-      if (error) throw error;
-      return res.status(200).json({ message: "Question added" });
-    }
-
-    if (action === "update_question") {
-      const { id, ...rest } = req.body;
+      const {
+        topic_id,
+        question,
+        option_a,
+        option_b,
+        option_c,
+        option_d,
+        correct_option
+      } = req.body;
 
       const { error } = await supabase
         .from("questions")
-        .update(rest)
+        .insert([
+          {
+            topic_id,
+            question,
+            option_a,
+            option_b,
+            option_c,
+            option_d,
+            correct_option
+          }
+        ]);
+
+      if (error) throw error;
+
+      return res.status(200).json({
+        success: true,
+        message: "Question added"
+      });
+    }
+
+    if (action === "update_question") {
+      const {
+        id,
+        topic_id,
+        question,
+        option_a,
+        option_b,
+        option_c,
+        option_d,
+        correct_option
+      } = req.body;
+
+      const { error } = await supabase
+        .from("questions")
+        .update({
+          topic_id,
+          question,
+          option_a,
+          option_b,
+          option_c,
+          option_d,
+          correct_option
+        })
         .eq("id", id);
 
       if (error) throw error;
-      return res.status(200).json({ message: "Updated" });
+
+      return res.status(200).json({
+        success: true,
+        message: "Question updated"
+      });
     }
 
     if (action === "delete_question") {
@@ -100,82 +231,103 @@ export default async function handler(req, res) {
         .eq("id", id);
 
       if (error) throw error;
-      return res.status(200).json({ message: "Deleted" });
+
+      return res.status(200).json({
+        success: true,
+        message: "Question deleted"
+      });
     }
 
-    // ================= EMPLOYEES =================
+    // =========================
+    // EMPLOYEES
+    // =========================
+
     if (action === "get_employees") {
       const { data, error } = await supabase
         .from("employees")
-        .select("employee_id, name")
-        .eq("role", "EMPLOYEE");
+        .select("employee_id,name")
+        .eq("role", "EMPLOYEE")
+        .order("employee_id");
 
       if (error) throw error;
+
       return res.status(200).json(data || []);
     }
 
-    // ================= ASSIGN =================
+    // =========================
+    // ASSIGNMENTS
+    // =========================
+
     if (action === "assign") {
-      const { employee_id, topic_id, duration, is_open } = req.body;
+      const {
+        employee_id,
+        topic_id,
+        duration,
+        is_open
+      } = req.body;
 
       const { error } = await supabase
-        .from("assessments") // ✅ FIXED
-        .insert([{ employee_id, topic_id, duration, is_open }]);
+        .from("assessments")
+        .insert([
+          {
+            employee_id,
+            topic_id,
+            duration,
+            is_open
+          }
+        ]);
 
       if (error) throw error;
 
-      return res.status(200).json({ message: "Assigned" });
+      return res.status(200).json({
+        success: true,
+        message: "Assessment assigned"
+      });
     }
 
-    // ================= GET ASSIGNMENTS =================
     if (action === "get_assignments") {
-
       const { data, error } = await supabase
-        .from("assessments") // ✅ FIXED
+        .from("assessments")
         .select(`
+          id,
+          employee_id,
+          topic_id,
           duration,
-          is_open,
-          employees ( name ),
-          topics ( topic_name )
-        `);
+          is_open
+        `)
+        .order("id", { ascending: false });
 
       if (error) throw error;
 
-      const result = data.map(a => ({
-        employee: a.employees?.name,
-        topic: a.topics?.topic_name,
-        duration: a.duration,
-        is_open: a.is_open
-      }));
-
-      return res.status(200).json(result);
+      return res.status(200).json(data || []);
     }
 
-    // ================= RESULTS =================
+    // =========================
+    // RESULTS
+    // =========================
+
     if (action === "get_results") {
       const { data, error } = await supabase
         .from("attempts")
-        .select(`
-          score,
-          employees ( name ),
-          topics ( topic_name )
-        `);
+        .select("*")
+        .order("attempt_date", { ascending: false });
 
       if (error) throw error;
 
-      const result = data.map(r => ({
-        name: r.employees?.name,
-        topic: r.topics?.topic_name,
-        score: r.score
-      }));
-
-      return res.status(200).json(result);
+      return res.status(200).json(data || []);
     }
 
-    return res.status(400).json({ error: "Invalid action" });
+    return res.status(404).json({
+      success: false,
+      message: "Invalid action"
+    });
 
-  } catch (err) {
-    console.error("🔥 API ERROR:", err);
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 }
