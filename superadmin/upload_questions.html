@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html>
 <head>
   <title>Upload Questions</title>
@@ -11,93 +12,223 @@
 
   <div class="sidebar">
     <h2>Super Admin</h2>
-    <a href="dashboard.html">Dashboard</a>
-    <a href="manage_users.html">Users</a>
-    <a href="manage_topics.html">Topics</a>
-    <a href="upload_questions.html">Upload Questions</a>
-    <a href="manage_permissions.html">Permissions</a>
-    <a href="../login.html">Logout</a>
+
+```
+<a href="dashboard.html">Dashboard</a>
+<a href="manage_users.html">Users</a>
+<a href="manage_topics.html">Topics</a>
+<a href="upload_questions.html" class="active">
+  Upload Questions
+</a>
+<a href="manage_permissions.html">Permissions</a>
+<a href="../login.html">Logout</a>
+```
+
   </div>
 
   <div class="main">
 
-    <h1>Upload Questions (CSV)</h1>
+```
+<h1>Upload Questions (CSV)</h1>
 
-    <div class="card">
-      
-      <!-- ✅ FIXED INPUT -->
-      <input id="topic" placeholder="Topic Name (exact match)"><br><br>
+<div class="card">
 
-      <input type="file" id="file"><br><br>
+  <label>Select Topic</label>
 
-      <button onclick="uploadCSV()">Upload</button>
+  <select id="topic">
+    <option value="">
+      Loading Topics...
+    </option>
+  </select>
 
-    </div>
+  <br><br>
+
+  <input
+    type="file"
+    id="file"
+    accept=".csv">
+
+  <br><br>
+
+  <button onclick="uploadCSV()">
+    Upload CSV
+  </button>
+
+</div>
+```
 
   </div>
 
 </div>
 
 <script>
+
+const topicSelect =
+  document.getElementById('topic');
+
+
+// =====================
+// LOAD TOPICS
+// =====================
+
+async function loadTopics() {
+
+  try {
+
+    const response =
+      await fetch('/api?action=topics');
+
+    const data =
+      await response.json();
+
+    topicSelect.innerHTML =
+      '<option value="">Select Topic</option>';
+
+    data.forEach(topic => {
+
+      topicSelect.innerHTML += `
+        <option value="${topic.id}">
+          ${topic.topic_name}
+        </option>
+      `;
+
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert('Failed to load topics');
+
+  }
+}
+
+
+// =====================
+// UPLOAD CSV
+// =====================
+
 async function uploadCSV() {
 
-  const file = document.getElementById("file").files[0];
+  const topic_id =
+    topicSelect.value;
 
-  // ✅ FIX: correct selector + trim
-  const topic = document.getElementById("topic").value.trim();
+  const file =
+    document.getElementById('file')
+      .files[0];
 
-  if (!topic) {
-    alert("Enter topic name");
+  if (!topic_id) {
+
+    alert('Select topic');
+
     return;
   }
 
   if (!file) {
-    alert("Select file");
+
+    alert('Select CSV file');
+
     return;
   }
 
-  const text = await file.text();
+  const text =
+    await file.text();
 
-  const rows = text.split("\n").slice(1);
+  const rows =
+    text.split('\n').slice(1);
 
   const questions = rows
-  .filter(r => r.trim() !== "")
-  .map(r => {
-    const cols = r.split(",");
 
-    return {
-      question: cols[0]?.trim(),
-      option_a: cols[1]?.trim(),
-      option_b: cols[2]?.trim(),
-      option_c: cols[3]?.trim(),
-      option_d: cols[4]?.trim(),
-      correct_option: cols[5]
-        ?.trim()
-        .match(/[A-D]/i)?.[0]
-        ?.toUpperCase()
-    };
-  });
+    .filter(row => row.trim())
 
-  console.log("Sending topic:", topic);
-  console.log("Parsed Questions:", questions);
+    .map(row => {
 
-  fetch('/api?action=upload_questions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ topic, questions })
-  })
-  .then(async r => {
-    const data = await r.json();
+      const cols =
+        row.split(',');
 
-    if (!r.ok) throw new Error(data.error);
+      return {
 
-    alert("Uploaded successfully");
-  })
-  .catch(err => {
-    alert("Error: " + err.message);
+        question:
+          cols[0]?.trim(),
+
+        option_a:
+          cols[1]?.trim(),
+
+        option_b:
+          cols[2]?.trim(),
+
+        option_c:
+          cols[3]?.trim(),
+
+        option_d:
+          cols[4]?.trim(),
+
+        correct_option:
+          cols[5]
+            ?.trim()
+            ?.toUpperCase()
+
+      };
+
+    });
+
+  try {
+
+    const response =
+      await fetch(
+        '/api?action=upload_questions',
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type':
+            'application/json'
+          },
+
+          body: JSON.stringify({
+            topic_id,
+            questions
+          })
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (result.success === false) {
+
+      alert(
+        result.message ||
+        'Upload failed'
+      );
+
+      return;
+    }
+
+    alert(
+      'Questions uploaded successfully'
+    );
+
+    document.getElementById(
+      'file'
+    ).value = '';
+
+  } catch (err) {
+
     console.error(err);
-  });
+
+    alert('Upload failed');
+
+  }
 }
+
+
+// =====================
+// INIT
+// =====================
+
+window.onload = loadTopics;
+
 </script>
 
 </body>
