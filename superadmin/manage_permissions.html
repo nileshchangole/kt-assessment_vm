@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html>
 <head>
   <title>Assign Topic</title>
@@ -11,108 +12,206 @@
 
   <div class="sidebar">
     <h2>Super Admin</h2>
-    <a href="dashboard.html">Dashboard</a>
-    <a href="manage_users.html">Users</a>
-    <a href="manage_topics.html">Topics</a>
-    <a href="upload_questions.html">Upload Questions</a>
-    <a href="manage_permissions.html" class="active">Permissions</a>
-    <a href="../login.html">Logout</a>
+
+```
+<a href="dashboard.html">Dashboard</a>
+<a href="manage_users.html">Users</a>
+<a href="manage_topics.html">Topics</a>
+<a href="upload_questions.html">Upload Questions</a>
+<a href="manage_permissions.html" class="active">Permissions</a>
+<a href="../login.html">Logout</a>
+```
+
   </div>
 
   <div class="main">
 
-    <h1>Assign Topic to Admin</h1>
+```
+<h1>Assign Topic to Admin</h1>
 
-    <div class="card">
+<div class="card">
 
-      <label>Admin</label>
-      <select id="admin"></select>
+  <label>Admin</label>
+  <select id="admin"></select>
 
-      <label>Topic</label>
-      <select id="topic"></select>
+  <label>Topic</label>
+  <select id="topic"></select>
 
-      <button onclick="assignPermission()">Assign</button>
+  <button onclick="assignPermission()">
+    Assign Topic
+  </button>
 
-    </div>
+</div>
+```
 
   </div>
 
 </div>
 
 <script>
-const adminSelect = document.getElementById("admin");
-const topicSelect = document.getElementById("topic");
 
+const adminSelect =
+  document.getElementById('admin');
+
+const topicSelect =
+  document.getElementById('topic');
+
+
+// =====================
 // LOAD ADMINS
-function loadAdmins() {
-  fetch('/api?action=get_admins')
-    .then(res => res.json())
-    .then(data => {
-      adminSelect.innerHTML = '<option value="">Select Admin</option>';
+// =====================
 
-      data.forEach(a => {
-        adminSelect.innerHTML += `
-          <option value="${a.employee_id}">
-            ${a.name}
-          </option>`;
-      });
-    })
-    .catch(err => {
-      console.error("Admin Load Error:", err);
-      alert("Failed to load admins");
+async function loadAdmins() {
+
+  try {
+
+    const response =
+      await fetch('/api?action=get_admins');
+
+    const data =
+      await response.json();
+
+    adminSelect.innerHTML =
+      '<option value="">Select Admin</option>';
+
+    data.forEach(admin => {
+
+      adminSelect.innerHTML += `
+        <option value="${admin.id}">
+          ${admin.name}
+          (${admin.employee_id})
+        </option>
+      `;
+
     });
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert('Failed to load admins');
+
+  }
 }
 
+
+// =====================
 // LOAD TOPICS
-function loadTopics() {
-  fetch('/api?action=topics') // ✅ GET (NO BODY)
-    .then(res => res.json())
-    .then(data => {
-      topicSelect.innerHTML = '<option value="">Select Topic</option>';
+// =====================
 
-      data.forEach(t => {
-        topicSelect.innerHTML += `
-          <option value="${t.id}">
-            ${t.topic_name}
-          </option>`;
-      });
-    })
-    .catch(err => {
-      console.error("Topic Load Error:", err);
-      alert("Failed to load topics");
+async function loadTopics() {
+
+  try {
+
+    const response =
+      await fetch('/api?action=topics');
+
+    const data =
+      await response.json();
+
+    topicSelect.innerHTML =
+      '<option value="">Select Topic</option>';
+
+    data.forEach(topic => {
+
+      topicSelect.innerHTML += `
+        <option value="${topic.id}">
+          ${topic.topic_name}
+        </option>
+      `;
+
     });
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert('Failed to load topics');
+
+  }
 }
 
+
+// =====================
 // ASSIGN TOPIC
-function assign() {
-  if (!adminSelect.value || !topicSelect.value) {
-    alert("Select admin and topic");
+// =====================
+
+async function assignPermission() {
+
+  if (
+    !adminSelect.value ||
+    !topicSelect.value
+  ) {
+    alert(
+      'Select admin and topic'
+    );
     return;
   }
 
-  fetch('/api?action=assign_topic', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      admin_id: adminSelect.value,
-      topic_id: topicSelect.value
-    })
-  })
-  .then(res => res.json())
-  .then(() => {
-    alert("Assigned successfully");
-  })
-  .catch(err => {
-    console.error("Assign Error:", err);
-    alert("Assignment failed");
-  });
+  try {
+
+    const response =
+      await fetch(
+        '/api?action=assign_topic',
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type':
+            'application/json'
+          },
+
+          body: JSON.stringify({
+            admin_id:
+              Number(adminSelect.value),
+
+            topic_id:
+              Number(topicSelect.value)
+          })
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (result.success === false) {
+
+      alert(
+        result.message ||
+        'Assignment failed'
+      );
+
+      return;
+    }
+
+    alert(
+      'Topic assigned successfully'
+    );
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert(
+      'Assignment failed'
+    );
+
+  }
 }
 
+
+// =====================
 // INIT
+// =====================
+
 window.onload = () => {
+
   loadAdmins();
+
   loadTopics();
+
 };
+
 </script>
 
 </body>
