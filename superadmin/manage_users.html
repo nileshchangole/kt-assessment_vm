@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html>
 <head>
   <title>Manage Users</title>
@@ -10,132 +11,263 @@
 <div class="container">
 
   <!-- Sidebar -->
+
   <div class="sidebar">
     <h2>Super Admin</h2>
-    <a href="dashboard.html">Dashboard</a>
-    <a href="manage_users.html" class="active">Users</a>
-    <a href="manage_topics.html">Topics</a>
-    <a href="upload_questions.html">Upload Questions</a>
-    <a href="manage_permissions.html">Permissions</a>
-    <a href="../login.html">Logout</a>
+
+```
+<a href="dashboard.html">Dashboard</a>
+<a href="manage_users.html" class="active">Users</a>
+<a href="manage_topics.html">Topics</a>
+<a href="upload_questions.html">Upload Questions</a>
+<a href="manage_permissions.html">Permissions</a>
+<a href="../login.html">Logout</a>
+```
+
   </div>
 
   <!-- Main -->
+
   <div class="main">
 
-    <h1>Manage Users</h1>
+```
+<h1>Manage Users</h1>
 
-    <!-- Add User -->
-    <div class="card">
-      <h3>Add User</h3>
+<!-- Add User -->
+<div class="card">
 
-      <label>Employee ID</label>
-      <input id="empId" placeholder="Enter Employee ID">
+  <h3>Add User</h3>
 
-      <label>Name</label>
-      <input id="name" placeholder="Enter Name">
+  <label>Employee ID</label>
+  <input id="empId" placeholder="Enter Employee ID">
 
-      <label>Password</label>
-      <input id="password" type="password" placeholder="Enter Password">
+  <label>Name</label>
+  <input id="name" placeholder="Enter Name">
 
-      <label>Role</label>
-      <select id="role">
-        <option value="EMPLOYEE">EMPLOYEE</option>
-        <option value="ADMIN">ADMIN</option>
-        <option value="SUPERADMIN">SUPERADMIN</option>
-      </select>
+  <label>Password</label>
+  <input id="password" type="password" placeholder="Enter Password">
 
-      <button onclick="addUser()">Add User</button>
-    </div>
+  <label>Role</label>
+  <select id="role">
+    <option value="EMPLOYEE">EMPLOYEE</option>
+    <option value="ADMIN">ADMIN</option>
+    <option value="SUPERADMIN">SUPERADMIN</option>
+  </select>
 
-    <!-- Table -->
-    <div class="card">
-      <h3>All Users</h3>
+  <button onclick="addUser()">
+    Add User
+  </button>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Emp ID</th>
-            <th>Name</th>
-            <th>Role</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="userTable"></tbody>
-      </table>
-    </div>
+</div>
+
+<!-- User Table -->
+<div class="card">
+
+  <h3>All Users</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Employee ID</th>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+
+    <tbody id="userTable"></tbody>
+
+  </table>
+
+</div>
+```
 
   </div>
 </div>
 
 <script>
 
+// ===========================
 // LOAD USERS
-function loadUsers() {
-  fetch('/api?action=get_users')
-    .then(res => res.json())
-    .then(data => {
+// ===========================
 
-      const table = document.getElementById('userTable');
-      table.innerHTML = '';
+async function loadUsers() {
 
-      data.forEach(user => {
-        table.innerHTML += `
-          <tr>
-            <td>${user.employee_id || '-'}</td>
-            <td>${user.name}</td>
-            <td>${user.role}</td>
-            <td>
-              <button class="danger">Delete</button>
-            </td>
-          </tr>
-        `;
-      });
+  try {
 
-    })
-    .catch(err => {
-      console.error("Load Users Error:", err);
-      alert("Failed to load users");
+    const response =
+      await fetch('/api?action=get_users');
+
+    const data =
+      await response.json();
+
+    const table =
+      document.getElementById('userTable');
+
+    table.innerHTML = '';
+
+    if (!Array.isArray(data)) {
+      table.innerHTML =
+        '<tr><td colspan="4">No users found</td></tr>';
+      return;
+    }
+
+    data.forEach(user => {
+
+      table.innerHTML += `
+        <tr>
+          <td>${user.employee_id || '-'}</td>
+          <td>${user.name || '-'}</td>
+          <td>${user.role || '-'}</td>
+          <td>
+            <button
+              class="danger"
+              onclick="deleteUser('${user.employee_id}')">
+              Delete
+            </button>
+          </td>
+        </tr>
+      `;
+
     });
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert('Failed to load users');
+
+  }
 }
 
 
+// ===========================
 // ADD USER
-function addUser() {
-  const emp_id = document.getElementById('empId').value.trim();
-  const name = document.getElementById('name').value.trim();
-  const password = document.getElementById('password').value.trim();
-  const role = document.getElementById('role').value;
+// ===========================
 
-  if (!emp_id || !name || !password) {
-    alert("All fields required");
+async function addUser() {
+
+  const employee_id =
+    document.getElementById('empId').value.trim();
+
+  const name =
+    document.getElementById('name').value.trim();
+
+  const password =
+    document.getElementById('password').value.trim();
+
+  const role =
+    document.getElementById('role').value;
+
+  if (
+    !employee_id ||
+    !name ||
+    !password
+  ) {
+    alert('All fields are required');
     return;
   }
 
-  fetch('/api?action=add_user', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ emp_id, name, password, role })
-  })
-  .then(res => res.json())
-  .then(data => {
-    alert("User added");
+  try {
+
+    const response = await fetch(
+      '/api?action=add_user',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          employee_id,
+          name,
+          password,
+          role
+        })
+      }
+    );
+
+    const result =
+      await response.json();
+
+    if (result.success === false) {
+      alert(result.message || 'Failed');
+      return;
+    }
+
+    alert('User added successfully');
 
     document.getElementById('empId').value = '';
     document.getElementById('name').value = '';
     document.getElementById('password').value = '';
 
     loadUsers();
-  })
-  .catch(err => {
+
+  } catch (err) {
+
     console.error(err);
-    alert("Failed to add user");
-  });
+
+    alert('Failed to add user');
+
+  }
 }
 
 
-// INIT
-window.onload = loadUsers;
+// ===========================
+// DELETE USER
+// ===========================
+
+async function deleteUser(employee_id) {
+
+  const ok = confirm(
+    `Delete user ${employee_id}?`
+  );
+
+  if (!ok) return;
+
+  try {
+
+    const response = await fetch(
+      '/api?action=delete_user',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          employee_id
+        })
+      }
+    );
+
+    const result =
+      await response.json();
+
+    if (result.success === false) {
+      alert(result.message || 'Delete failed');
+      return;
+    }
+
+    alert('User deleted successfully');
+
+    loadUsers();
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert('Failed to delete user');
+
+  }
+}
+
+
+// ===========================
+// PAGE INIT
+// ===========================
+
+window.onload = function () {
+  loadUsers();
+};
 
 </script>
 
